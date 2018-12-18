@@ -9,7 +9,7 @@ namespace VisionRenderG_code
     {
         public static void Main(string[] args)
         {
-            String fileName = "C:\\Users\\TaySm\\Desktop\\BlenderObjects\\redBlueCube.gcode";
+            String fileName = "C:\\Users\\TaySm\\CS 4710\\cube.gcode";
             String line;
             try
             {
@@ -24,10 +24,10 @@ namespace VisionRenderG_code
                 //Read the first line of text
                 line = sr.ReadLine();
                 int zLayer = 0;
-                double X = 0;
-                double Y = 0;
-                double X2 = 0;
-                double Y2 = 0;
+                int X = 0;
+                int Y = 0;
+                int X2 = 0;
+                int Y2 = 0;
                 int coord_Count = 0;
 
                 //Continue to read until you reach end of file
@@ -88,20 +88,20 @@ namespace VisionRenderG_code
                         Console.WriteLine(Xdata + " " + Ydata);
                         if (coord_Count == 0)
                         {
-                            //double x1, y1;
-                            Double.TryParse(Xdata, out X);
-                            Double.TryParse(Ydata, out Y);
-                            //X = (int) Math.Round(x1);
-                            //Y = (int) Math.Round(y1);
+                            double x, y;
+                            Double.TryParse(Xdata, out x);
+                            Double.TryParse(Ydata, out y);
+                            X = (int) x;
+                            Y = (int) y;
                             coord_Count++;
                         }
                         else if (coord_Count == 1)
                         {
-                            //double x2, y2;
-                            Double.TryParse(Xdata, out X2);
-                            Double.TryParse(Ydata, out Y2);
-                            //X2 = (int) Math.Round(x2);
-                            //Y2 = (int) Math.Round(y2);
+                            double x2, y2;
+                            Double.TryParse(Xdata, out x2);
+                            Double.TryParse(Ydata, out y2);
+                            X2 = (int) x2;
+                            Y2 = (int) y2;
                             Console.WriteLine("X,Y: " + X + " " + Y + "\n");
                             Console.WriteLine("X2,Y2: " + X2 + " " + Y2 + "\n");
                             DrawLine(coordinate_Data, X, Y, X2, Y2, currZ - 1, line_data);
@@ -117,6 +117,24 @@ namespace VisionRenderG_code
                 sr.Close();
 
                 AddDataToDictionary(coordinate_Data, objectData);
+                //Example #4: Append new text to an existing file.
+                // Write to a file
+                using (System.IO.StreamWriter file =
+                    new System.IO.StreamWriter(@"C:\Users\TaySm\CS 4710\Cube_test.txt", true))
+                {
+                    file.WriteLine("1");
+                    file.WriteLine(pixelCount.ToString().PadLeft(5,'0'));
+                    foreach (int key in objectData.Keys)
+                    {
+                        List<Pixel> listOfPixels = objectData[key];
+                        foreach(Pixel currPixel in listOfPixels)
+                        {
+                            file.WriteLine(((int)currPixel.Z).ToString().PadLeft(2,'0') + " " + ((int)currPixel.radius).ToString().PadLeft(2, '0') + " " + currPixel.angle.ToString().PadLeft(3, '0') + " " + currPixel.redVal.ToString().PadLeft(5, '0') + " " + currPixel.greenVal.ToString().PadLeft(5, '0') + " " + currPixel.blueVal.ToString().PadLeft(5, '0'));
+                        }
+                    }
+
+
+                }
 
             }
             catch (Exception e)
@@ -127,16 +145,48 @@ namespace VisionRenderG_code
             {
                 Console.WriteLine("Executing finally block.");
             }
+
+
         }
 
+        private static byte[] convertToBytes (UInt32 value)
+        {
+            byte[] intBytes = BitConverter.GetBytes(value);
+            Array.Reverse(intBytes);
+            return intBytes;
+        }
+
+        private static byte[] convertToBytes(UInt16 value)
+        {
+            byte[] intBytes = BitConverter.GetBytes(value);
+            Array.Reverse(intBytes);
+            return intBytes;
+        }
+
+        private static byte[] convertToBytes(char value)
+        {
+            byte[] intBytes = BitConverter.GetBytes(value);
+            Array.Reverse(intBytes);
+            return intBytes;
+        }
+
+        private static byte[] convertToBytes(Pixel currPixel)
+        {
+            byte[] intBytes = new byte[10];
+            Array.Reverse(intBytes);
+            return intBytes;
+        }
+
+
+        private static UInt32 pixelCount;
         private static void AddDataToDictionary(Dictionary<int, List<Coord>> coordinate_Data, Dictionary<int, List<Pixel>> objectData)
         {
+            pixelCount = 0;
             foreach(int key in coordinate_Data.Keys)
             {
                 if (key != 0)
-                {
+                { 
                     List<Pixel> currPixelsLayer = new List<Pixel>();
-                    Console.WriteLine("Z layer: " + key + "\n");
                     foreach (Coord coordinate in coordinate_Data[key])
                     {
                         Pixel currPixel = new Pixel();
@@ -144,103 +194,37 @@ namespace VisionRenderG_code
                         double yData = coordinate.Y;
                         currPixel.addAngle(xData, yData, 360);
                         currPixel.addRadius(xData, yData);
-                        currPixel.addZdata(key);
+                        currPixel.addZdata((char)(key-1));
+                        currPixel.addColor(0xFFFF, 0xFFFF, 0xFFFF);
+                        Console.WriteLine("Z layer:" + (int)currPixel.Z + "\n");
                         Console.WriteLine("Angle: " + currPixel.angle + "\n");
-                        Console.WriteLine("Radius: " + currPixel.radius + "\n");
+                        Console.WriteLine("Radius: " + (int)currPixel.radius + "\n");
                         currPixelsLayer.Add(currPixel);
+                        pixelCount++;
                     }
-                    objectData.Add(key, currPixelsLayer);
+                    objectData.Add(key-1, currPixelsLayer);
                     Console.WriteLine("\n");
                 }
             }
         }
 
-        private static List<Coord> DrawLine(this Dictionary<int, List<Coord>> coordinates, double x0, double y0, double x1, double y1, int z, List<Coord> line_data)
+        private static List<Coord> DrawLine(this Dictionary<int, List<Coord>> coordinates, int x0, int y0, int x1, int y1, int z, List<Coord> line_data)
         {
-            int dx = Math.Abs((int)(x1 - x0)), sx = x0 < x1 ? 1 : -1;
-            int dy = Math.Abs((int)(y1 - y0)), sy = y0 < y1 ? 1 : -1;
+            int dx = Math.Abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+            int dy = Math.Abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
             int err = (dx > dy ? dx : -dy) / 2, e2;
             for (; ; )
             {
-                double prevX;
-                double prevY;
-                Console.WriteLine("line data: " + x0 + " " + y0 + "\n");
                 Coord curr_coord = new Coord();
                 curr_coord.X = x0;
                 curr_coord.Y = y0;
-                prevX = x0;
-                prevY = y0;
+                Console.WriteLine("line data: " + x0 + " " + y0 + "\n");
                 line_data.Add(curr_coord);
                 if (x0 == x1 && y0 == y1) break;
                 e2 = err;
-                if (e2 > -dx)
-                {
-                    if (sx == -1)
-                    {
-                        if ((x0 + sx) < x1)
-                        {
-                            Coord end_coord = new Coord();
-                            end_coord.X = x1;
-                            end_coord.Y = y1;
-                            line_data.Add(end_coord);
-                            break;
-                        }
-                    }
-                    if (sx == 1)
-                    {
-                        if ((x0 + sx) > x1)
-                        {
-                            Coord end_coord = new Coord();
-                            end_coord.X = x1;
-                            end_coord.Y = y1;
-                            line_data.Add(end_coord);
-                            break;
-                        }
-                    }
-
-                    err -= dy;
-                    x0 += sx;
-                }
-                if (e2 < dy)
-                {
-                    if (sy == 1)
-                    {
-                        if ((y0 + sy) > y1)
-                        {
-                            Coord end_coord = new Coord();
-                            end_coord.X = x1;
-                            end_coord.Y = y1;
-                            line_data.Add(end_coord);
-                            break;
-                        }
-                    }
-                    if (sy == -1)
-                    {
-                        if ((y0 + sy) < x1)
-                        {
-                            Coord end_coord = new Coord();
-                            end_coord.X = x1;
-                            end_coord.Y = y1;
-                            line_data.Add(end_coord);
-                            break;
-                        }
-                    }
-
-                    err += dx;
-                    y0 += sy;
-                }
-                x0 = Math.Truncate(x0 * 1000) / 1000;
-                y0 = Math.Truncate(y0 * 1000) / 1000;
-                if(prevX == x0 && prevY == y0)
-                {
-                    Coord end_coord = new Coord();
-                    end_coord.X = x1;
-                    end_coord.Y = y1;
-                    line_data.Add(end_coord);
-                    break;
-                }
+                if (e2 > -dx) { err -= dy; x0 += sx; }
+                if (e2 < dy) { err += dx; y0 += sy; }
             }
-            
             return line_data;
         }
     }
